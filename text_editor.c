@@ -15,6 +15,7 @@ static unsigned int width, height;
 static void redraw_screen()
 {
 	int x=0,y=0;
+	clear();
 	for(int i=0;i<buf_idx;i++)
     {
 		if(buffer[i]==CTRL('m'))
@@ -46,8 +47,15 @@ int main()
 	while(1)
 	{
 		wget_wch(stdscr,&key);
-		if(key==CTRL('q'))
+		if(key==CTRL('Q'))
 			break;
+		if(key==127)//KEY_BACKSPACE)
+		{
+			//mvprintw(0,0,"backspace");
+			buf_idx--;
+			redraw_screen();
+			continue;	
+		}
 		//printable key
 		if(buf_idx == buf_size)
 		{
