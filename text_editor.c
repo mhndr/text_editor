@@ -89,8 +89,9 @@ static void handle_enter()
 	new->prev = curr;
 	curr->next = new;
 	curr = new;
-	redraw_screen();
 	y = (y+1)%height;
+	x = 0;
+	redraw_screen();
 }
 
 static void handle_keyup()
@@ -99,16 +100,18 @@ static void handle_keyup()
 	{
 		y--;
 		curr = curr->prev;	
+		x = curr->usize-1;
 		move(y,x);
 	}
 }
 
 static void handle_keydown()
 {
-	if(y != height && curr->next!=NULL)
-	{	
-		curr = curr->next;
+	if(curr->next!=NULL)
+	{
 		y++;	
+		curr = curr->next;
+		x = curr->usize-1;
 		move(y,x);
 	}
 }
@@ -121,7 +124,7 @@ static void handle_keyleft()
 
 static void handle_keyright()
 {
-	if(x != width && x != curr->usize)
+	if(x != curr->usize)
 	{
 		x++;
 		move(y,x);
