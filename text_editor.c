@@ -23,9 +23,10 @@ static unsigned int width, height;
 
 static void redraw_screen()
 {
-	clear();
 	int y=0,x=0;
 	line_t *line = first;
+	
+	clear();
 	while(line){
 		for(int i=0;i<line->usize;i++){
 			if(line->text[i]=='\0'){	
@@ -56,6 +57,15 @@ static line_t* create_line(const char *str)
 	return new;
 }
 
+static void free_line(line_t *line)
+{
+	if(line) {
+		if(line->text)
+			free(line->text);
+		free(line);
+	}
+}
+
 static void insert_char(char c)
 {
 	if(curr->usize == curr->asize){
@@ -66,25 +76,23 @@ static void insert_char(char c)
 	x = (x+1)%width;
 }
 
-/*
-static void insert_str(line_t line,char *str)
-{
-	if(curr->asize-curr->usize < strlen(str)){
-		curr->asize += strlen(str);
-		curr->text = realloc(curr->text,curr->asize);
-	}
-	//strcpy(	
-			
-}*/
-
 static void  handle_backspace()
 {
 	line_t *line = curr;
-	while(line && line->usize==0)
-		line = line->prev;
-	if(line){
-		//line->text[line->usize]='\0';
+	if(line->usize==0) {
+		curr = line->prev;
+		free_line(line);
+	}
+	else {
 		line->usize--;
+		x = line->usize;
+		if(line->usize==0) {
+			line->prev->next = line->next;
+			curr = line->prev;
+			if(line->next)
+				line->next->prev = line->prev;
+			free_line(line);
+		}
 	}
 	redraw_screen();
 }
