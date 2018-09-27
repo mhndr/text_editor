@@ -118,8 +118,9 @@ static void handle_keyup()
 {
 	if(curr->prev!=NULL) {
 		y--;
-		curr = curr->prev;	
-		x = curr->usize-1;
+		curr = curr->prev;
+		if(x>curr->usize-1)	
+			x = curr->usize-1;
 		move(y,x);
 	}
 }
