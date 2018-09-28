@@ -23,26 +23,38 @@ static unsigned int width, height;
 
 static void redraw_screen()
 {
-	int y=0,x=0;
+	int _y=0,_x=0;
 	line_t *line = first;
 	
 	clear();
+	mvprintw(height-2,0,"%p-%s",curr,curr->text);	
 	while(line){
 		for(int i=0;i<line->usize;i++){
 			if(line->text[i]=='\0'){	
-				y = (y+1)%height;
-				x = 0;
-				mvprintw(y,x,"");
+				_y = (_y+1)%height;
+				_x = 0;
+				mvprintw(_y,_x,"");
 				continue;
 			}	
-			mvprintw(y,x++,"%c",line->text[i]);
-			if(x==width){
-				x=0;
-				y=(y+1)%height;
+			mvprintw(_y,_x++,"%c",line->text[i]);
+			if(_x==width){
+				_x=0;
+				_y=(_y+1)%height;
 			}
 		}
 		line=line->next;
 	}
+
+	attrset(A_BOLD);
+	for (int i=_y+1;i<height-2;i++) { 
+		move(i,0);
+		//clrtoeol();
+		mvprintw(i, 0, "~"); 
+	}
+	attrset(A_NORMAL); 
+	move(_y,_x);
+	//refresh();
+
 }
 
 static line_t* create_line(const char *str)
@@ -99,6 +111,8 @@ static void  handle_backspace()
 static void handle_enter()
 {
 	line_t *new;
+
+	insert_char('\0');
 	if(x < curr->usize)	{
 		new = create_line(curr->text+x);
 		curr->usize=x;
@@ -106,16 +120,18 @@ static void handle_enter()
 	else {
 		new = create_line("");
 	}
-	insert_char('\0');
 
 	if(curr->next){
-		    
+		curr->next->prev=new;
+		new->next = curr->next;
 	}
 	else {	
 		new->prev = curr;
-		curr->next = new;
-		curr = new;
 	}
+
+	curr->next = new;
+	curr = new;
+	insert_char('\0');
 	y = (y+1)%height;
 	x = 0;
 	redraw_screen();
@@ -164,7 +180,7 @@ int main()
    	getmaxyx(stdscr, height, width);
 	first = create_line("");
 	curr=first;
-	
+	redraw_screen();
 	while(1){
 		key = wgetch(stdscr);
 		if(key==CTRL('Q'))
