@@ -79,21 +79,20 @@ static void insert_char(char c)
 static void  handle_backspace()
 {
 	line_t *line = curr;
-	if(line->usize==0) {
+
+	if(line->usize==0 && line->prev) {
+		if(line->prev) 
+			line->prev->next = line->next;
+		if(line->next) 
+			line->next->prev = line->prev;
+		y--;	
 		curr = line->prev;
 		free_line(line);
 	}
-	else {
+	else 
 		line->usize--;
-		x = line->usize;
-		if(line->usize==0) {
-			line->prev->next = line->next;
-			curr = line->prev;
-			if(line->next)
-				line->next->prev = line->prev;
-			free_line(line);
-		}
-	}
+
+	x = line->usize;
 	redraw_screen();
 }
 
