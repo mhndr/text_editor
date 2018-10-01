@@ -17,7 +17,7 @@ typedef struct line
 
 line_t *first;
 line_t *curr;
-int x=0,y=0;
+static unsigned int x=0,y=0;
 static wint_t key;
 static unsigned int width, height;
 
@@ -27,7 +27,13 @@ static void redraw_screen()
 	line_t *line = first;
 	
 	clear();
-	mvprintw(height-2,0,"%p-%s",curr,curr->text);	
+	#ifdef debug
+	attrset(A_REVERSE);
+	mvprintw(height-2,0,"%*c",width-1," ");
+	mvprintw(height-2,0,"%p<-%p-%s->%p|u=%d,a=%d|x=%d,y=%d",curr->prev,curr,
+				curr->text,curr->next,curr->usize,curr->asize,x,y);	
+	attrset(A_NORMAL);
+	#endif
 	while(line){
 		for(int i=0;i<line->usize;i++){
 			if(line->text[i]=='\0'){	
@@ -48,13 +54,11 @@ static void redraw_screen()
 	attrset(A_BOLD);
 	for (int i=_y+1;i<height-2;i++) { 
 		move(i,0);
-		//clrtoeol();
 		mvprintw(i, 0, "~"); 
 	}
 	attrset(A_NORMAL); 
-	move(_y,_x);
-	//refresh();
-
+	move(y,x);
+	refresh();
 }
 
 static line_t* create_line(const char *str)
@@ -84,8 +88,23 @@ static void insert_char(char c)
 		curr->asize +=1;
 		curr->text = realloc(curr->text,curr->asize);
 	}
-	curr->text[curr->usize++]=c;
+	memmove(curr->text+x+1,curr->text+x,curr->usize-x);
+	curr->text[x] = c;
+	curr->usize++;
 	x = (x+1)%width;
+}
+
+static void append_str(const char *str)
+{
+	int size = strlen(str);
+	if(curr->asize-curr->asize< size){
+		curr->asize +=size;
+		curr->text = realloc(curr->text,curr->asize);
+	}
+	memmove(curr->text+x+1,curr->text+x,curr->usize-x);
+	strncpy(curr->text,str,size);
+	curr->usize += size ;
+	x = (x+size)%width;
 }
 
 static void  handle_backspace()
@@ -98,13 +117,17 @@ static void  handle_backspace()
 		if(line->next) 
 			line->next->prev = line->prev;
 		y--;	
+		append_str(line->text);
 		curr = line->prev;
 		free_line(line);
+		x = line->usize-1;
 	}
-	else 
+	else {
+		memmove(curr->text+x,curr->text+x+1,curr->usize-x); 
 		line->usize--;
-
-	x = line->usize;
+		if(x>0)
+			x--;
+	}
 	redraw_screen();
 }
 
@@ -125,13 +148,10 @@ static void handle_enter()
 		curr->next->prev=new;
 		new->next = curr->next;
 	}
-	else {	
-		new->prev = curr;
-	}
-
+	new->prev = curr;
 	curr->next = new;
 	curr = new;
-	insert_char('\0');
+	
 	y = (y+1)%height;
 	x = 0;
 	redraw_screen();
@@ -144,7 +164,8 @@ static void handle_keyup()
 		curr = curr->prev;
 		if(x>curr->usize-1)	
 			x = curr->usize-1;
-		move(y,x);
+		//move(y,x);
+		redraw_screen();
 	}
 }
 
@@ -153,15 +174,20 @@ static void handle_keydown()
 	if(curr->next!=NULL) {
 		y++;	
 		curr = curr->next;
-		x = curr->usize-1;
-		move(y,x);
+		if(x>curr->usize-1)	
+			x = curr->usize-1;
+		//move(y,x);
+		redraw_screen();
 	}
 }
 
 static void handle_keyleft()
 {
-	x--;
-	move(y,x);
+	if(x > 0) {	
+		x--;
+		move(y,x);
+		redraw_screen();
+	}
 }
 
 static void handle_keyright()
@@ -169,6 +195,7 @@ static void handle_keyright()
 	if(x != curr->usize){
 		x++;
 		move(y,x);
+		redraw_screen();
 	}	
 }
 
