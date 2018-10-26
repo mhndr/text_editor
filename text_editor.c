@@ -30,29 +30,19 @@ static void redraw_screen()
 	#ifdef debug
 	attrset(A_REVERSE);
 	mvprintw(height-2,0,"%*c",width-1," ");
-	mvprintw(height-2,0,"%p<-%p-%s->%p|u=%d,a=%d|x=%d,y=%d",curr->prev,curr,
-				curr->text,curr->next,curr->usize,curr->asize,x,y);	
+	mvprintw(height-2,0,"%p <-%p->%p| %s-%d |u=%d,a=%d|x=%d,y=%d",
+			curr->prev,curr,curr->next,curr->text,strlen(curr->text),
+			curr->usize,curr->asize,x,y);	
 	attrset(A_NORMAL);
 	#endif
 	while(line){
-		for(int i=0;i<line->usize;i++){
-			if(line->text[i]=='\0'){	
-				_y = (_y+1)%height;
-				_x = 0;
-				mvprintw(_y,_x,"");
-				continue;
-			}	
-			mvprintw(_y,_x++,"%c",line->text[i]);
-			if(_x==width){
-				_x=0;
-				_y=(_y+1)%height;
-			}
-		}
+		mvprintw(_y,_x,"%s",line->text);
+		_y = (_y+1)%height;
 		line=line->next;
 	}
 
 	attrset(A_BOLD);
-	for (int i=_y+1;i<height-2;i++) { 
+	for (int i=_y;i<height-2;i++) { 
 		move(i,0);
 		mvprintw(i, 0, "~"); 
 	}
@@ -117,16 +107,18 @@ static void  handle_backspace()
 		if(line->next) 
 			line->next->prev = line->prev;
 		y--;	
-		append_str(line->text);
 		curr = line->prev;
 		free_line(line);
-		x = line->usize-1;
+		x = curr->usize;
 	}
 	else {
 		memmove(curr->text+x,curr->text+x+1,curr->usize-x); 
-		line->usize--;
-		if(x>0)
+		if(line->usize>0)
+		{
 			x--;
+			line->text[x]='\0';
+			line->usize--;
+		}
 	}
 	redraw_screen();
 }
@@ -135,7 +127,6 @@ static void handle_enter()
 {
 	line_t *new;
 
-	insert_char('\0');
 	if(x < curr->usize)	{
 		new = create_line(curr->text+x);
 		curr->usize=x;
@@ -143,7 +134,8 @@ static void handle_enter()
 	else {
 		new = create_line("");
 	}
-
+	curr->text[x]='\0';	
+	
 	if(curr->next){
 		curr->next->prev=new;
 		new->next = curr->next;
@@ -151,7 +143,6 @@ static void handle_enter()
 	new->prev = curr;
 	curr->next = new;
 	curr = new;
-	
 	y = (y+1)%height;
 	x = 0;
 	redraw_screen();
@@ -164,7 +155,6 @@ static void handle_keyup()
 		curr = curr->prev;
 		if(x>curr->usize-1)	
 			x = curr->usize-1;
-		//move(y,x);
 		redraw_screen();
 	}
 }
@@ -176,7 +166,6 @@ static void handle_keydown()
 		curr = curr->next;
 		if(x>curr->usize-1)	
 			x = curr->usize-1;
-		//move(y,x);
 		redraw_screen();
 	}
 }
