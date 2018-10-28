@@ -21,6 +21,14 @@ static unsigned int x=0,y=0;
 static wint_t key;
 static unsigned int width, height;
 
+#ifdef debug
+static char* debug_str = "";
+void set_debug_str(char *str)
+{
+	strncpy(debug_str,str,strlen(str));
+}
+#endif 
+
 static void redraw_screen()
 {
 	int _y=0,_x=0;
@@ -30,9 +38,9 @@ static void redraw_screen()
 	#ifdef debug
 	attrset(A_REVERSE);
 	mvprintw(height-2,0,"%*c",width-1," ");
-	mvprintw(height-2,0,"%p <-%p->%p| %s-%d |u=%d,a=%d|x=%d,y=%d",
+	mvprintw(height-2,0,"%p <-%p->%p| %s-%d |u=%d,a=%d|x=%d,y=%d| %s",
 			curr->prev,curr,curr->next,curr->text,strlen(curr->text),
-			curr->usize,curr->asize,x,y);	
+			curr->usize,curr->asize,x,y,debug_str);	
 	attrset(A_NORMAL);
 	#endif
 	while(line){
@@ -87,12 +95,12 @@ static void insert_char(char c)
 static void append_str(const char *str)
 {
 	int size = strlen(str);
-	if(curr->asize-curr->asize< size){
-		curr->asize +=size;
+	if(curr->usize + size < curr->asize){
+		curr->asize += size;
 		curr->text = realloc(curr->text,curr->asize);
 	}
-	memmove(curr->text+x+1,curr->text+x,curr->usize-x);
-	strncpy(curr->text,str,size);
+	//memmove(curr->text+x+1,curr->text+x,curr->usize-x);
+	strncat(curr->text,str,size);
 	curr->usize += size ;
 	x = (x+size)%width;
 }
@@ -101,23 +109,39 @@ static void  handle_backspace()
 {
 	line_t *line = curr;
 
-	if(line->usize==0 && line->prev) {
+	if(line->usize==0 && !line->prev) {
+		return;
+	}
+
+	if( (line->usize==0 && line->prev) || x==0 ) {
+		/*if the line was empty or the cursor was at SOL*/
 		if(line->prev) 
 			line->prev->next = line->next;
 		if(line->next) 
 			line->next->prev = line->prev;
 		y--;	
 		curr = line->prev;
+		if(x==0) {
+			//needs fixing
+			append_str(line->text);
+		}
+		//x = curr->usize;
 		free_line(line);
-		x = curr->usize;
 	}
+
 	else {
-		memmove(curr->text+x,curr->text+x+1,curr->usize-x); 
-		if(line->usize>0)
-		{
+		if(line->usize == x) {	
+			/*if the cursor was at EOL*/
 			x--;
 			line->text[x]='\0';
 			line->usize--;
+		}
+		else {
+			/*if the cursor was somewhere in the middle of the line*/
+			memmove(curr->text+x,curr->text+x+1,curr->usize-x);
+			/*can realloc the text buffer here*/
+			x--;
+			line->usize--;	
 		}
 	}
 	redraw_screen();
