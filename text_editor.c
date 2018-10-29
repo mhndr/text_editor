@@ -88,7 +88,10 @@ static void insert_char(char c)
 	}
 	memmove(curr->text+x+1,curr->text+x,curr->usize-x);
 	curr->text[x] = c;
+	//curr->text[x+1]='\0';
 	curr->usize++;
+	if(x+1 == width)
+		y++;
 	x = (x+1)%width;
 }
 
@@ -102,12 +105,15 @@ static void append_str(const char *str)
 	//memmove(curr->text+x+1,curr->text+x,curr->usize-x);
 	strncat(curr->text,str,size);
 	curr->usize += size ;
+	if(x+size == width)
+		y++;
 	x = (x+size)%width;
 }
 
 static void  handle_backspace()
 {
 	line_t *line = curr;
+	int _x = 0;
 
 	if(line->usize==0 && !line->prev) {
 		return;
@@ -121,11 +127,11 @@ static void  handle_backspace()
 			line->next->prev = line->prev;
 		y--;	
 		curr = line->prev;
+		_x = curr->usize;
 		if(x==0) {
-			//needs fixing
 			append_str(line->text);
 		}
-		//x = curr->usize;
+		x = _x;
 		free_line(line);
 	}
 
