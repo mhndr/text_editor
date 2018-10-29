@@ -17,8 +17,7 @@ typedef struct line
 
 line_t *first;
 line_t *curr;
-static unsigned int x=0,y=0;
-static wint_t key;
+static int x=0,y=0;
 static unsigned int width, height;
 
 #ifdef debug
@@ -33,7 +32,8 @@ static void redraw_screen()
 {
 	int _y=0,_x=0;
 	line_t *line = first;
-	
+	int line_count = 0;	
+
 	clear();
 	#ifdef debug
 	attrset(A_REVERSE);
@@ -43,10 +43,11 @@ static void redraw_screen()
 			curr->usize,curr->asize,x,y,debug_str);	
 	attrset(A_NORMAL);
 	#endif
-	while(line){
+	while(line && line_count<=height-2){
 		mvprintw(_y,_x,"%s",line->text);
 		_y = (_y+1)%height;
 		line=line->next;
+		line_count++;
 	}
 
 	attrset(A_BOLD);
@@ -83,12 +84,13 @@ static void free_line(line_t *line)
 static void insert_char(char c)
 {
 	if(curr->usize == curr->asize){
-		curr->asize +=1;
+		curr->asize +=2;
 		curr->text = realloc(curr->text,curr->asize);
 	}
 	memmove(curr->text+x+1,curr->text+x,curr->usize-x);
 	curr->text[x] = c;
-	//curr->text[x+1]='\0';
+	if(curr->usize == x)
+		curr->text[x+1]='\0'; 
 	curr->usize++;
 	if(x+1 == width)
 		y++;
@@ -144,7 +146,7 @@ static void  handle_backspace()
 		}
 		else {
 			/*if the cursor was somewhere in the middle of the line*/
-			memmove(curr->text+x,curr->text+x+1,curr->usize-x);
+			memmove(curr->text+(x-1),curr->text+x,curr->usize-x);
 			/*can realloc the text buffer here*/
 			x--;
 			line->usize--;	
@@ -185,6 +187,10 @@ static void handle_keyup()
 		curr = curr->prev;
 		if(x>curr->usize-1)	
 			x = curr->usize-1;
+		if(y<0) {
+			y=0;
+			first = first->prev;
+		}
 		redraw_screen();
 	}
 }
@@ -196,6 +202,10 @@ static void handle_keydown()
 		curr = curr->next;
 		if(x>curr->usize-1)	
 			x = curr->usize-1;
+		if(y>height) {
+			y = height;
+			first = first->next;
+		}
 		redraw_screen();
 	}
 }
@@ -218,13 +228,45 @@ static void handle_keyright()
 	}	
 }
 
-int main()
+int open_file(char *fname) {
+	FILE *fd;
+	char read_buf[256]= "";
+	line_t *_line;	
+	
+	fd = fopen(fname,"r");
+	if(fd == NULL)
+		return -1;	
+
+	while(fgets(read_buf,256,fd) != NULL) {
+		_line = create_line(read_buf);		
+		if(!first) {
+			first = _line;
+			curr = _line;
+			continue;
+		}
+		curr->next  = _line;
+		_line->prev = curr;
+		curr = _line;
+	}
+	fclose(fd);	
+	curr = first;
+	return 0;
+}
+
+
+int main(int argc, char*argv[])
 {
 	wint_t key;
 	initscr(); raw(); noecho(); nonl(); keypad(stdscr, TRUE);
 	setlocale(LC_ALL, ""); 
    	getmaxyx(stdscr, height, width);
-	first = create_line("");
+	
+	
+	if(argc == 2) {
+		open_file(argv[1]);		
+	}
+	if(!first)
+		first = create_line("");
 	curr=first;
 	redraw_screen();
 	while(1){
