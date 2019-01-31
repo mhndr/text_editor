@@ -28,6 +28,21 @@ void set_debug_str(char *str)
 }
 #endif 
 
+static int print_line(int row, const char *text,int len) {
+	int col = 0;
+	for(int i=0;i<len && col<width;col++) {
+		if(text[i] == '\t') {
+			mvprintw(row,col,"%*s",4,"");
+			col += 4;
+		}
+		else {
+			mvaddnwstr(row,col,text+i,1);
+			col++;
+		}
+	}
+	return col;
+}
+
 static void redraw_screen()
 {
 	int _y=0,_x=0;
@@ -45,6 +60,7 @@ static void redraw_screen()
 	#endif
 	while(line && line_count<=height-2){
 		mvprintw(_y,_x,"%s",line->text);
+		//print_line(_y,line->text,line->usize);
 		_y = (_y+1)%height;
 		line=line->next;
 		line_count++;
@@ -128,6 +144,10 @@ static void  handle_backspace()
 		if(line->next) 
 			line->next->prev = line->prev;
 		y--;	
+		if(y<0) {
+			y=0;
+			first = first->prev;
+		}
 		curr = line->prev;
 		_x = curr->usize;
 		if(x==0) {
@@ -175,8 +195,12 @@ static void handle_enter()
 	new->prev = curr;
 	curr->next = new;
 	curr = new;
-	y = (y+1)%height;
 	x = 0;
+	y++;
+	if(y>height) {
+		y = height;
+		first = first->next;
+	}
 	redraw_screen();
 }
 
@@ -185,9 +209,9 @@ static void handle_keyup()
 	if(curr->prev!=NULL) {
 		y--;
 		curr = curr->prev;
-		if(x>curr->usize-1)	
-			x = curr->usize-1;
-		if(y<0) {
+		if(x > curr->usize-1)	
+			x = curr->usize;
+		if(y < 0) {
 			y=0;
 			first = first->prev;
 		}
@@ -201,7 +225,7 @@ static void handle_keydown()
 		y++;	
 		curr = curr->next;
 		if(x>curr->usize-1)	
-			x = curr->usize-1;
+			x = curr->usize;
 		if(y>height) {
 			y = height;
 			first = first->next;
@@ -213,7 +237,10 @@ static void handle_keydown()
 static void handle_keyleft()
 {
 	if(x > 0) {	
-		x--;
+		if(curr->text[x]=='\t')
+			x = x-8;
+		else
+			x--;
 		move(y,x);
 		redraw_screen();
 	}
@@ -222,7 +249,10 @@ static void handle_keyleft()
 static void handle_keyright()
 {
 	if(x != curr->usize){
-		x++;
+		if(curr->text[x]=='\t')
+			x=(x+8)>width?width:x+8;
+		else
+			x++;
 		move(y,x);
 		redraw_screen();
 	}	
