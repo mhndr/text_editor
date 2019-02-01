@@ -169,7 +169,8 @@ static void  handle_backspace()
 			memmove(curr->text+(x-1),curr->text+x,curr->usize-x);
 			/*can realloc the text buffer here*/
 			x--;
-			line->usize--;	
+			line->usize--;
+			line->text[line->usize]='\0';
 		}
 	}
 	redraw_screen();
